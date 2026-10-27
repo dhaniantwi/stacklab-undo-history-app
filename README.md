@@ -1,36 +1,27 @@
-# StackLab — Undo History Simulator
+# StackLab: Undo/Redo History Engine
 
-A browser-based Data Structures assignment demonstrating a **stack** through an undo-history application.
+A production-ready web application built to demonstrate **Stack Data Structures** in real-world interactive software.
 
-## Assignment
-**Describe real-world applications that require stacks as a data structure, explain why stacks are necessary, and choose one application to develop.**
+## 🚀 Features
+- **Dual Stack Engine**: Implements `UndoStack` and `RedoStack` following LIFO principles.
+- **Real-Time Visualizer**: Visualizes stack mutations (Push, Pop, Top peek) live as you edit text.
+- **Debounced State Capture**: Automatically creates atomic undo states without cluttering memory on every keystroke.
+- **Keyboard Shortcuts**: Built-in support for `Ctrl + Z` (Undo) and `Ctrl + Y` (Redo).
 
-The site explains stack applications and develops an Undo History Simulator.
+## 🛠️ Deployment to GitHub Pages
 
-## Real-world applications
-- Undo/redo in text editors
-- Browser navigation history
-- Function calls and recursion
-- Expression processing in compilers and calculators
-- Backtracking in games and search
-- Checking balanced brackets and symbols
-
-## Operations demonstrated
-- **Push:** Add an action to the top.
-- **Pop:** Undo/remove the most recently added action.
-- **Peek:** View the top item without removing it.
-- **isEmpty:** Check whether the stack has items.
-- **Size:** Display the number of items.
-
-The app follows **LIFO (Last In, First Out)** and uses JavaScript array `push()` and `pop()`.
-
-## Files
-- `index.html` — content and assignment explanation
-- `style.css` — responsive design
-- `script.js` — stack logic
-
-## Run / publish
-Open `index.html` in a modern browser. For GitHub Pages, upload all four files to the repository root and publish from `main`.
-
-## Limitation
-The stack is stored in browser memory and resets when the page is refreshed. This is an educational demonstration.
+1. **Extract Zip**: Unzip `stacklab-undo-history-app.zip`.
+2. **Push to GitHub**:
+   ```bash
+   git init
+   git add .
+   git commit -m "Initial commit: StackLab application"
+   git branch -M main
+   git remote add origin https://github.com/YOUR_USERNAME/stacklab-undo-history-app.git
+   git push -u origin main
+   ```
+3. **Enable GitHub Pages**:
+   - Go to your repository on GitHub.
+   - Click **Settings** > **Pages**.
+   - Under **Source**, select `main` branch and `/ (root)`.
+   - Click **Save**. Your site will be live in ~1 minute!
