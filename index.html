@@ -3,62 +3,70 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>StackLab: Text Editor & Canvas with Undo/Redo History</title>
+    <title>StackLab: Medical Incident Reporting System with Dual-Stack History Engine</title>
     <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
     <header class="app-header">
         <div class="logo">
-            <span class="logo-icon">📚</span>
-            <h1>StackLab <span class="subtitle">| Undo/Redo Engine Visualizer</span></h1>
+            <div class="logo-symbol">SL</div>
+            <h1>StackLab <span class="subtitle">| Critical Incident Report Audit Engine</span></h1>
         </div>
         <div class="header-actions">
-            <button id="undo-btn" title="Undo (Ctrl+Z)" disabled>↩️ Undo</button>
-            <button id="redo-btn" title="Redo (Ctrl+Y)" disabled>↪️ Redo</button>
-            <button id="clear-btn" class="danger">🗑️ Clear Canvas</button>
+            <button id="undo-btn" title="Undo Last Entry (Ctrl+Z)" disabled>Undo Last Entry</button>
+            <button id="redo-btn" title="Redo Entry (Ctrl+Y)" disabled>Redo Entry</button>
+            <button id="clear-btn" class="danger">Reset Form</button>
         </div>
     </header>
 
     <main class="app-container">
-        <!-- Main Workspace -->
+        <!-- Main Workspace: Clinical Incident Log Entry -->
         <section class="workspace">
-            <div class="tabs">
-                <button class="tab-btn active" data-tab="text-editor">📝 Rich Text Editor</button>
-                <button class="tab-btn" data-tab="drawing-board">🎨 Visual Canvas</button>
+            <div class="workspace-header">
+                <h2>Clinical & Critical Incident Form (Audit Compliant)</h2>
+                <p class="description">
+                    Problem Solved: Prevents catastrophic data loss in critical environments (e.g., healthcare/disaster logs) where typing errors, accidental form resets, or network failures destroy vital information. Every atomic modification is stored in a strict LIFO Undo Stack.
+                </p>
             </div>
 
-            <!-- Tab 1: Text Editor -->
-            <div id="text-editor" class="tab-content active">
-                <div class="editor-toolbar">
-                    <button class="style-btn" data-style="bold"><b>B</b></button>
-                    <button class="style-btn" data-style="italic"><i>I</i></button>
-                    <button class="style-btn" data-style="underline"><u>U</u></button>
-                    <span class="divider"></span>
-                    <button class="action-btn" id="add-text-snippet">+ Insert Template</button>
+            <form id="incident-form" onsubmit="return false;">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="patient-id">Patient / Unit ID</label>
+                        <input type="text" id="patient-id" placeholder="e.g. ICU-409-B">
+                    </div>
+                    <div class="form-group">
+                        <label for="severity-level">Severity Level</label>
+                        <select id="severity-level">
+                            <option value="Low">Low (Routine Observation)</option>
+                            <option value="Medium">Medium (Requires Intervention)</option>
+                            <option value="High">High (Immediate Action Required)</option>
+                            <option value="Critical">Critical (Life Safety Threat)</option>
+                        </select>
+                    </div>
                 </div>
-                <textarea id="editor-textarea" placeholder="Start typing here... Every meaningful state change is pushed onto the Undo Stack!"></textarea>
-            </div>
 
-            <!-- Tab 2: Canvas -->
-            <div id="drawing-board" class="tab-content">
-                <div class="canvas-controls">
-                    <label>Color: <input type="color" id="brush-color" value="#4F46E5"></label>
-                    <label>Size: <input type="range" id="brush-size" min="2" max="30" value="5"></label>
-                    <button class="action-btn" id="add-shape">➕ Add Shape</button>
+                <div class="form-group">
+                    <label for="incident-notes">Incident Detailed Narrative Log</label>
+                    <textarea id="incident-notes" placeholder="Describe clinical symptoms, triage steps taken, or equipment anomalies..."></textarea>
                 </div>
-                <canvas id="paint-canvas" width="650" height="400"></canvas>
-            </div>
+
+                <div class="preset-actions">
+                    <button type="button" class="action-btn" id="insert-vitals">Insert Standard Vitals Template</button>
+                    <button type="button" class="action-btn" id="insert-triage">Insert Triage Protocol Template</button>
+                </div>
+            </form>
         </section>
 
         <!-- Stack Visualizer Sidebar -->
         <aside class="stack-visualizer">
-            <h2>🥞 Data Structure Inspector</h2>
+            <h2>Data Structure Inspector</h2>
             
             <div class="stack-box">
                 <div class="stack-header">
                     <h3>Undo Stack <span class="badge" id="undo-count">0</span></h3>
-                    <small>LIFO: Top element popped on Undo</small>
+                    <small>LIFO: Top state restored on Undo</small>
                 </div>
                 <div id="undo-stack-list" class="stack-container">
                     <div class="empty-state">Stack is Empty</div>
@@ -68,7 +76,7 @@
             <div class="stack-box">
                 <div class="stack-header">
                     <h3>Redo Stack <span class="badge" id="redo-count">0</span></h3>
-                    <small>LIFO: Cleared on new action</small>
+                    <small>LIFO: Cleared on new entry execution</small>
                 </div>
                 <div id="redo-stack-list" class="stack-container">
                     <div class="empty-state">Stack is Empty</div>

@@ -1,4 +1,4 @@
-// --- Custom Stack Implementation ---
+// Stack Implementation (LIFO Data Structure)
 class Stack {
     constructor() {
         this.items = [];
@@ -35,62 +35,76 @@ class Stack {
     }
 }
 
-// --- Application State Manager ---
-class AppStateManager {
+// State Manager Handling Dual Stacks for Real-World Incident Logs
+class IncidentFormStateManager {
     constructor() {
         this.undoStack = new Stack();
         this.redoStack = new Stack();
         this.currentState = null;
     }
 
-    executeAction(newState, description = "Action") {
+    captureCurrentFormState() {
+        return {
+            patientId: document.getElementById('patient-id').value,
+            severity: document.getElementById('severity-level').value,
+            notes: document.getElementById('incident-notes').value
+        };
+    }
+
+    applyStateToForm(state) {
+        if (!state) return;
+        document.getElementById('patient-id').value = state.patientId || '';
+        document.getElementById('severity-level').value = state.severity || 'Low';
+        document.getElementById('incident-notes').value = state.notes || '';
+    }
+
+    executeAction(description = "Edit Field") {
+        const newState = this.captureCurrentFormState();
+        
+        // Prevent pushing duplicate consecutive states
+        if (this.currentState && JSON.stringify(this.currentState) === JSON.stringify(newState)) {
+            return;
+        }
+
         if (this.currentState !== null) {
             this.undoStack.push({ state: this.currentState, description });
         }
         this.currentState = newState;
-        // Rules of Undo/Redo: Executing new action clears Redo Stack
+        
+        // Push clears Redo Stack (Standard Undo/Redo invariant)
         this.redoStack.clear();
         this.updateUI();
     }
 
     undo() {
-        if (this.undoStack.isEmpty()) return null;
+        if (this.undoStack.isEmpty()) return;
 
-        // Push current state to Redo Stack
-        this.redoStack.push({ state: this.currentState, description: "Undo step" });
+        this.redoStack.push({ state: this.currentState, description: "Reverted Change" });
+        const previousAction = this.undoStack.pop();
+        this.currentState = previousAction.state;
 
-        // Pop state from Undo Stack
-        const lastAction = this.undoStack.pop();
-        this.currentState = lastAction.state;
-
+        this.applyStateToForm(this.currentState);
         this.updateUI();
-        return this.currentState;
     }
 
     redo() {
-        if (this.redoStack.isEmpty()) return null;
+        if (this.redoStack.isEmpty()) return;
 
-        // Push current state to Undo Stack
-        this.undoStack.push({ state: this.currentState, description: "Redo step" });
-
-        // Pop state from Redo Stack
+        this.undoStack.push({ state: this.currentState, description: "Restored Change" });
         const nextAction = this.redoStack.pop();
         this.currentState = nextAction.state;
 
+        this.applyStateToForm(this.currentState);
         this.updateUI();
-        return this.currentState;
     }
 
     updateUI() {
-        // Update Buttons state
         document.getElementById('undo-btn').disabled = this.undoStack.isEmpty();
         document.getElementById('redo-btn').disabled = this.redoStack.isEmpty();
 
-        // Update Counts
         document.getElementById('undo-count').textContent = this.undoStack.size();
         document.getElementById('redo-count').textContent = this.redoStack.size();
 
-        // Render Stack Visualizers
         this.renderStack('undo-stack-list', this.undoStack.toArray());
         this.renderStack('redo-stack-list', this.redoStack.toArray());
     }
@@ -104,82 +118,72 @@ class AppStateManager {
             return;
         }
 
-        // Display stack items (top element highlighted)
         items.forEach((item, index) => {
             const div = document.createElement('div');
             div.className = 'stack-item' + (index === items.length - 1 ? ' top' : '');
-            const textPreview = typeof item.state === 'string' 
-                ? (item.state.length > 18 ? item.state.substring(0, 18) + '...' : item.state || '[Empty]') 
-                : item.description;
-            div.textContent = `[${index}] ${textPreview}`;
+            
+            const pId = item.state.patientId ? item.state.patientId : "No-ID";
+            const sev = item.state.severity || "Low";
+            const notesLen = item.state.notes ? item.state.notes.length : 0;
+
+            div.textContent = `[${index}] ${item.description} (ID: ${pId}, Sev: ${sev}, Notes: ${notesLen} chars)`;
             container.appendChild(div);
         });
     }
 }
 
-// --- Initialize App ---
-const stateManager = new AppStateManager();
+// Initialize Application
+const stateManager = new IncidentFormStateManager();
+stateManager.currentState = stateManager.captureCurrentFormState();
 
-// Text Editor DOM
-const editor = document.getElementById('editor-textarea');
+// Event Listeners for Input with Debouncing
 let debounceTimer;
+const inputs = ['patient-id', 'severity-level', 'incident-notes'];
 
-// Initial state
-stateManager.currentState = editor.value;
-
-// Event: Track Text Changes with Debounce
-editor.addEventListener('input', () => {
-    clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(() => {
-        stateManager.executeAction(editor.value, "Type Text");
-    }, 400); // 400ms debounce to prevent spamming stack on every keypress
+inputs.forEach(id => {
+    const el = document.getElementById(id);
+    const eventType = el.tagName === 'SELECT' ? 'change' : 'input';
+    
+    el.addEventListener(eventType, () => {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+            stateManager.executeAction(`Update ${id}`);
+        }, 350);
+    });
 });
 
-// Event: Undo Button
-document.getElementById('undo-btn').addEventListener('click', () => {
-    const previousState = stateManager.undo();
-    if (previousState !== null) {
-        editor.value = previousState;
-    }
-});
+// Undo and Redo Button Events
+document.getElementById('undo-btn').addEventListener('click', () => stateManager.undo());
+document.getElementById('redo-btn').addEventListener('click', () => stateManager.redo());
 
-// Event: Redo Button
-document.getElementById('redo-btn').addEventListener('click', () => {
-    const nextState = stateManager.redo();
-    if (nextState !== null) {
-        editor.value = nextState;
-    }
-});
-
-// Event: Keybindings (Ctrl+Z, Ctrl+Y)
+// Keyboard Shortcuts (Ctrl+Z / Ctrl+Y)
 document.addEventListener('keydown', (e) => {
     if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
         e.preventDefault();
-        document.getElementById('undo-btn').click();
+        stateManager.undo();
     } else if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.shiftKey && e.key === 'Z'))) {
         e.preventDefault();
-        document.getElementById('redo-btn').click();
+        stateManager.redo();
     }
 });
 
-// Preset Snippets
-document.getElementById('add-text-snippet').addEventListener('click', () => {
-    editor.value += "\n[StackLab Snippet: LIFO Stack Operations]";
-    stateManager.executeAction(editor.value, "Insert Snippet");
+// Clinical Action Presets
+document.getElementById('insert-vitals').addEventListener('click', () => {
+    const textarea = document.getElementById('incident-notes');
+    textarea.value += "\n[VITALS LOG]: BP: 120/80 mmHg | Heart Rate: 72 bpm | SpO2: 98%";
+    stateManager.executeAction("Insert Vitals Log");
 });
 
-// Clear Button
+document.getElementById('insert-triage').addEventListener('click', () => {
+    const textarea = document.getElementById('incident-notes');
+    textarea.value += "\n[TRIAGE ACTION]: Patient evaluated under Emergency Severity Index Protocol Level 2. Primary nurse assigned.";
+    stateManager.executeAction("Insert Triage Action");
+});
+
+// Form Reset Action
 document.getElementById('clear-btn').addEventListener('click', () => {
-    editor.value = "";
-    stateManager.executeAction("", "Clear Editor");
-});
-
-// Tab Switcher
-document.querySelectorAll('.tab-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-        btn.classList.add('active');
-        document.getElementById(btn.dataset.tab).classList.add('active');
-    });
+    document.getElementById('patient-id').value = '';
+    document.getElementById('severity-level').value = 'Low';
+    document.getElementById('incident-notes').value = '';
+    stateManager.executeAction("Reset Form");
 });
