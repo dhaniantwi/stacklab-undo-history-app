@@ -1,4 +1,11 @@
-// Stack Implementation (LIFO Data Structure)
+
+"use strict";
+
+// ==========================================
+// 1. STACK IMPLEMENTATION (LIFO)
+// Last In, First Out
+// ==========================================
+
 class Stack {
     constructor() {
         this.items = [];
@@ -35,155 +42,319 @@ class Stack {
     }
 }
 
-// State Manager Handling Dual Stacks for Real-World Incident Logs
-class IncidentFormStateManager {
+// ==========================================
+// 2. STUDENT WORK RECOVERY STATE MANAGER
+// Manages Undo and Redo using two stacks
+// ==========================================
+
+class WorkRecoveryManager {
     constructor() {
         this.undoStack = new Stack();
         this.redoStack = new Stack();
-        this.currentState = null;
+
+        this.editor = document.getElementById("document-content");
+        this.titleInput = document.getElementById("document-title");
+
+        this.undoButton = document.getElementById("undo-btn");
+        this.redoButton = document.getElementById("redo-btn");
+        this.saveButton = document.getElementById("save-btn");
+
+        this.undoList = document.getElementById("undo-history");
+        this.redoList = document.getElementById("redo-history");
+
+        this.status = document.getElementById("save-status");
+        this.wordCount = document.getElementById("word-count");
+        this.characterCount = document.getElementById("character-count");
+
+        this.maxHistory = 50;
+        this.debounceTimer = null;
+
+        this.currentState = this.captureState();
+
+        this.loadSavedWork();
+        this.updateUI();
+        this.updateStatistics();
+        this.attachEvents();
     }
 
-    captureCurrentFormState() {
+    captureState() {
         return {
-            patientId: document.getElementById('patient-id').value,
-            severity: document.getElementById('severity-level').value,
-            notes: document.getElementById('incident-notes').value
+            title: this.titleInput ? this.titleInput.value : "",
+            content: this.editor ? this.editor.value : ""
         };
     }
 
-    applyStateToForm(state) {
+    applyState(state) {
         if (!state) return;
-        document.getElementById('patient-id').value = state.patientId || '';
-        document.getElementById('severity-level').value = state.severity || 'Low';
-        document.getElementById('incident-notes').value = state.notes || '';
+
+        if (this.titleInput) {
+            this.titleInput.value = state.title;
+        }
+
+        if (this.editor) {
+            this.editor.value = state.content;
+        }
+
+        this.currentState = this.captureState();
+        this.updateStatistics();
     }
 
-    executeAction(description = "Edit Field") {
-        const newState = this.captureCurrentFormState();
-        
-        // Prevent pushing duplicate consecutive states
-        if (this.currentState && JSON.stringify(this.currentState) === JSON.stringify(newState)) {
+    saveHistory(stack, state) {
+        stack.push({
+            title: state.title,
+            content: state.content
+        });
+
+        if (stack.size() > this.maxHistory) {
+            const items = stack.toArray();
+            items.shift();
+            stack.clear();
+            items.forEach(item => stack.push(item));
+        }
+    }
+
+    recordChange() {
+        const newState = this.captureState();
+
+        if (
+            newState.title === this.currentState.title &&
+            newState.content === this.currentState.content
+        ) {
             return;
         }
 
-        if (this.currentState !== null) {
-            this.undoStack.push({ state: this.currentState, description });
-        }
+        this.saveHistory(this.undoStack, this.currentState);
+
         this.currentState = newState;
-        
-        // Push clears Redo Stack (Standard Undo/Redo invariant)
+
+        // A new edit invalidates the redo history.
         this.redoStack.clear();
+
+        this.updateStatistics();
         this.updateUI();
+        this.scheduleSave();
     }
 
     undo() {
-        if (this.undoStack.isEmpty()) return;
+        if (this.undoStack.isEmpty()) {
+            this.showStatus("There are no earlier changes to restore.");
+            return;
+        }
 
-        this.redoStack.push({ state: this.currentState, description: "Reverted Change" });
-        const previousAction = this.undoStack.pop();
-        this.currentState = previousAction.state;
+        this.saveHistory(this.redoStack, this.captureState());
 
-        this.applyStateToForm(this.currentState);
+        const previousState = this.undoStack.pop();
+        this.applyState(previousState);
+
         this.updateUI();
+        this.saveDocument();
+        this.showStatus("Undo successful — previous work restored.");
     }
 
     redo() {
-        if (this.redoStack.isEmpty()) return;
+        if (this.redoStack.isEmpty()) {
+            this.showStatus("There are no changes to redo.");
+            return;
+        }
 
-        this.undoStack.push({ state: this.currentState, description: "Restored Change" });
-        const nextAction = this.redoStack.pop();
-        this.currentState = nextAction.state;
+        this.saveHistory(this.undoStack, this.captureState());
 
-        this.applyStateToForm(this.currentState);
+        const nextState = this.redoStack.pop();
+        this.applyState(nextState);
+
         this.updateUI();
+        this.saveDocument();
+        this.showStatus("Redo successful — work restored.");
     }
 
-    updateUI() {
-        document.getElementById('undo-btn').disabled = this.undoStack.isEmpty();
-        document.getElementById('redo-btn').disabled = this.redoStack.isEmpty();
+    updateStatistics() {
+        if (!this.editor) return;
 
-        document.getElementById('undo-count').textContent = this.undoStack.size();
-        document.getElementById('redo-count').textContent = this.redoStack.size();
+        const text = this.editor.value;
+        const words = text.trim()
+            ? text.trim().split(/\s+/).length
+            : 0;
 
-        this.renderStack('undo-stack-list', this.undoStack.toArray());
-        this.renderStack('redo-stack-list', this.redoStack.toArray());
+        if (this.wordCount) {
+            this.wordCount.textContent = words;
+        }
+
+        if (this.characterCount) {
+            this.characterCount.textContent = text.length;
+        }
     }
 
-    renderStack(elementId, items) {
-        const container = document.getElementById(elementId);
-        container.innerHTML = '';
+    renderStack(container, stack, label) {
+        if (!container) return;
+
+        container.replaceChildren();
+
+        const items = stack.toArray();
 
         if (items.length === 0) {
-            container.innerHTML = '<div class="empty-state">Stack is Empty</div>';
+            const empty = document.createElement("div");
+            empty.className = "empty-state";
+            empty.textContent = "Stack is empty";
+            container.appendChild(empty);
             return;
         }
 
         items.forEach((item, index) => {
-            const div = document.createElement('div');
-            div.className = 'stack-item' + (index === items.length - 1 ? ' top' : '');
-            
-            const pId = item.state.patientId ? item.state.patientId : "No-ID";
-            const sev = item.state.severity || "Low";
-            const notesLen = item.state.notes ? item.state.notes.length : 0;
+            const entry = document.createElement("div");
 
-            div.textContent = `[${index}] ${item.description} (ID: ${pId}, Sev: ${sev}, Notes: ${notesLen} chars)`;
-            container.appendChild(div);
+            entry.className = "stack-item";
+
+            if (index === items.length - 1) {
+                entry.classList.add("top");
+            }
+
+            const preview = item.content
+                .replace(/\s+/g, " ")
+                .trim()
+                .slice(0, 65);
+
+            entry.textContent =
+                `${index === items.length - 1 ? "TOP · " : ""}` +
+                `${label}: ${preview || "(empty document)"}`;
+
+            container.appendChild(entry);
+        });
+    }
+
+    updateUI() {
+        if (this.undoButton) {
+            this.undoButton.disabled = this.undoStack.isEmpty();
+        }
+
+        if (this.redoButton) {
+            this.redoButton.disabled = this.redoStack.isEmpty();
+        }
+
+        this.renderStack(this.undoList, this.undoStack, "Previous version");
+        this.renderStack(this.redoList, this.redoStack, "Undone version");
+    }
+
+    saveDocument() {
+        try {
+            const data = {
+                title: this.titleInput ? this.titleInput.value : "",
+                content: this.editor ? this.editor.value : "",
+                savedAt: new Date().toISOString()
+            };
+
+            localStorage.setItem(
+                "studentWorkRecoveryDocument",
+                JSON.stringify(data)
+            );
+
+            this.showStatus("Your work is saved in this browser.");
+        } catch (error) {
+            console.error("Unable to save work:", error);
+            this.showStatus("Save failed. Check browser storage.");
+        }
+    }
+
+    scheduleSave() {
+        clearTimeout(this.debounceTimer);
+        this.showStatus("Saving your work...");
+
+        this.debounceTimer = setTimeout(() => {
+            this.saveDocument();
+        }, 500);
+    }
+
+    loadSavedWork() {
+        try {
+            const saved = localStorage.getItem(
+                "studentWorkRecoveryDocument"
+            );
+
+            if (!saved) return;
+
+            const data = JSON.parse(saved);
+
+            if (this.titleInput && typeof data.title === "string") {
+                this.titleInput.value = data.title;
+            }
+
+            if (this.editor && typeof data.content === "string") {
+                this.editor.value = data.content;
+            }
+
+            this.currentState = this.captureState();
+            this.showStatus("Your previously saved work was restored.");
+        } catch (error) {
+            console.error("Unable to restore saved work:", error);
+            this.showStatus("Could not restore previously saved work.");
+        }
+    }
+
+    showStatus(message) {
+        if (this.status) {
+            this.status.textContent = message;
+        }
+    }
+
+    attachEvents() {
+        if (this.editor) {
+            this.editor.addEventListener("input", () => {
+                this.recordChange();
+            });
+        }
+
+        if (this.titleInput) {
+            this.titleInput.addEventListener("input", () => {
+                this.recordChange();
+            });
+        }
+
+        if (this.undoButton) {
+            this.undoButton.addEventListener("click", () => this.undo());
+        }
+
+        if (this.redoButton) {
+            this.redoButton.addEventListener("click", () => this.redo());
+        }
+
+        if (this.saveButton) {
+            this.saveButton.addEventListener("click", () => {
+                clearTimeout(this.debounceTimer);
+                this.saveDocument();
+            });
+        }
+
+        document.addEventListener("keydown", event => {
+            if ((event.ctrlKey || event.metaKey) &&
+                event.key.toLowerCase() === "z") {
+                event.preventDefault();
+
+                if (event.shiftKey) {
+                    this.redo();
+                } else {
+                    this.undo();
+                }
+            } else if ((event.ctrlKey || event.metaKey) &&
+                       event.key.toLowerCase() === "y") {
+                event.preventDefault();
+                this.redo();
+            }
         });
     }
 }
 
-// Initialize Application
-const stateManager = new IncidentFormStateManager();
-stateManager.currentState = stateManager.captureCurrentFormState();
+// ==========================================
+// 3. START APPLICATION
+// ==========================================
 
-// Event Listeners for Input with Debouncing
-let debounceTimer;
-const inputs = ['patient-id', 'severity-level', 'incident-notes'];
+document.addEventListener("DOMContentLoaded", () => {
+    const editor = document.getElementById("document-content");
 
-inputs.forEach(id => {
-    const el = document.getElementById(id);
-    const eventType = el.tagName === 'SELECT' ? 'change' : 'input';
-    
-    el.addEventListener(eventType, () => {
-        clearTimeout(debounceTimer);
-        debounceTimer = setTimeout(() => {
-            stateManager.executeAction(`Update ${id}`);
-        }, 350);
-    });
-});
-
-// Undo and Redo Button Events
-document.getElementById('undo-btn').addEventListener('click', () => stateManager.undo());
-document.getElementById('redo-btn').addEventListener('click', () => stateManager.redo());
-
-// Keyboard Shortcuts (Ctrl+Z / Ctrl+Y)
-document.addEventListener('keydown', (e) => {
-    if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
-        e.preventDefault();
-        stateManager.undo();
-    } else if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.shiftKey && e.key === 'Z'))) {
-        e.preventDefault();
-        stateManager.redo();
+    if (!editor) {
+        console.error(
+            "Editor not found. Check the document-content ID in index.html."
+        );
+        return;
     }
-});
 
-// Clinical Action Presets
-document.getElementById('insert-vitals').addEventListener('click', () => {
-    const textarea = document.getElementById('incident-notes');
-    textarea.value += "\n[VITALS LOG]: BP: 120/80 mmHg | Heart Rate: 72 bpm | SpO2: 98%";
-    stateManager.executeAction("Insert Vitals Log");
-});
-
-document.getElementById('insert-triage').addEventListener('click', () => {
-    const textarea = document.getElementById('incident-notes');
-    textarea.value += "\n[TRIAGE ACTION]: Patient evaluated under Emergency Severity Index Protocol Level 2. Primary nurse assigned.";
-    stateManager.executeAction("Insert Triage Action");
-});
-
-// Form Reset Action
-document.getElementById('clear-btn').addEventListener('click', () => {
-    document.getElementById('patient-id').value = '';
-    document.getElementById('severity-level').value = 'Low';
-    document.getElementById('incident-notes').value = '';
-    stateManager.executeAction("Reset Form");
+    window.workRecovery = new WorkRecoveryManager();
 });
