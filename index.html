@@ -1,90 +1,169 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>StackLab: Medical Incident Reporting System with Dual-Stack History Engine</title>
+    <meta name="description" content="A student writing application that uses stacks to undo and redo document changes.">
+    <title>Student Work Recovery System</title>
     <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="script.js" defer></script>
 </head>
 <body>
     <header class="app-header">
-        <div class="logo">
-            <div class="logo-symbol">SL</div>
-            <h1>StackLab <span class="subtitle">| Critical Incident Report Audit Engine</span></h1>
+        <div class="brand">
+            <div class="brand-icon">S</div>
+            <div>
+                <h1>Student Work Recovery</h1>
+                <p>Your work. Your ideas. Your safety net.</p>
+            </div>
         </div>
-        <div class="header-actions">
-            <button id="undo-btn" title="Undo Last Entry (Ctrl+Z)" disabled>Undo Last Entry</button>
-            <button id="redo-btn" title="Redo Entry (Ctrl+Y)" disabled>Redo Entry</button>
-            <button id="clear-btn" class="danger">Reset Form</button>
-        </div>
+        <span class="project-label">DATA STRUCTURES PROJECT</span>
     </header>
 
-    <main class="app-container">
-        <!-- Main Workspace: Clinical Incident Log Entry -->
-        <section class="workspace">
-            <div class="workspace-header">
-                <h2>Clinical & Critical Incident Form (Audit Compliant)</h2>
-                <p class="description">
-                    Problem Solved: Prevents catastrophic data loss in critical environments (e.g., healthcare/disaster logs) where typing errors, accidental form resets, or network failures destroy vital information. Every atomic modification is stored in a strict LIFO Undo Stack.
-                </p>
-            </div>
-
-            <form id="incident-form" onsubmit="return false;">
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="patient-id">Patient / Unit ID</label>
-                        <input type="text" id="patient-id" placeholder="e.g. ICU-409-B">
-                    </div>
-                    <div class="form-group">
-                        <label for="severity-level">Severity Level</label>
-                        <select id="severity-level">
-                            <option value="Low">Low (Routine Observation)</option>
-                            <option value="Medium">Medium (Requires Intervention)</option>
-                            <option value="High">High (Immediate Action Required)</option>
-                            <option value="Critical">Critical (Life Safety Threat)</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label for="incident-notes">Incident Detailed Narrative Log</label>
-                    <textarea id="incident-notes" placeholder="Describe clinical symptoms, triage steps taken, or equipment anomalies..."></textarea>
-                </div>
-
-                <div class="preset-actions">
-                    <button type="button" class="action-btn" id="insert-vitals">Insert Standard Vitals Template</button>
-                    <button type="button" class="action-btn" id="insert-triage">Insert Triage Protocol Template</button>
-                </div>
-            </form>
+    <main class="container">
+        <section class="welcome-section">
+            <p class="eyebrow">WRITE WITH CONFIDENCE</p>
+            <h2>Never lose a good idea to a bad edit.</h2>
+            <p>
+                Write your assignments and lecture notes, undo unwanted
+                changes, redo actions, and save your work in your browser.
+            </p>
         </section>
 
-        <!-- Stack Visualizer Sidebar -->
-        <aside class="stack-visualizer">
-            <h2>Data Structure Inspector</h2>
-            
-            <div class="stack-box">
-                <div class="stack-header">
-                    <h3>Undo Stack <span class="badge" id="undo-count">0</span></h3>
-                    <small>LIFO: Top state restored on Undo</small>
+        <section class="editor-card">
+            <div class="document-toolbar">
+                <div class="document-heading">
+                    <span class="document-icon">▤</span>
+                    <div>
+                        <h3>Your document</h3>
+                        <p id="save-status" role="status">Ready to write</p>
+                    </div>
                 </div>
-                <div id="undo-stack-list" class="stack-container">
-                    <div class="empty-state">Stack is Empty</div>
+
+                <div class="toolbar-actions">
+                    <button id="undo-btn" class="button button-secondary"
+                            type="button" disabled>
+                        ↶ Undo
+                    </button>
+                    <button id="redo-btn" class="button button-secondary"
+                            type="button" disabled>
+                        ↷ Redo
+                    </button>
                 </div>
             </div>
 
-            <div class="stack-box">
-                <div class="stack-header">
-                    <h3>Redo Stack <span class="badge" id="redo-count">0</span></h3>
-                    <small>LIFO: Cleared on new entry execution</small>
+            <label class="field-label" for="document-title">
+                Document title
+            </label>
+            <input
+                id="document-title"
+                type="text"
+                maxlength="100"
+                placeholder="e.g. Computer Networks Lecture Notes"
+                autocomplete="off"
+            >
+
+            <label class="field-label" for="document-content">
+                Start writing here
+            </label>
+            <textarea
+                id="document-content"
+                placeholder="Type your assignment or lecture notes here...
+
+Try writing a sentence, changing it, and pressing Undo to recover the previous version."
+                spellcheck="true"
+            ></textarea>
+
+            <div class="editor-footer">
+                <div class="document-stats">
+                    <span id="word-count">0 words</span>
+                    <span class="stat-divider">•</span>
+                    <span id="character-count">0 characters</span>
                 </div>
-                <div id="redo-stack-list" class="stack-container">
-                    <div class="empty-state">Stack is Empty</div>
+                <button id="save-btn" class="button button-primary"
+                        type="button">
+                    Save my work
+                </button>
+            </div>
+        </section>
+
+        <section class="history-grid">
+            <article class="history-card">
+                <div class="history-heading">
+                    <span class="history-icon undo-icon">↶</span>
+                    <div>
+                        <h3>Undo Stack</h3>
+                        <p>Previous document states</p>
+                    </div>
+                </div>
+                <div id="undo-history" class="history-list" aria-live="polite">
+                    <p class="empty-history">Your previous versions will appear here.</p>
+                </div>
+                <p class="stack-note">Last saved change is recovered first.</p>
+            </article>
+
+            <article class="history-card">
+                <div class="history-heading">
+                    <span class="history-icon redo-icon">↷</span>
+                    <div>
+                        <h3>Redo Stack</h3>
+                        <p>Changes you have undone</p>
+                    </div>
+                </div>
+                <div id="redo-history" class="history-list" aria-live="polite">
+                    <p class="empty-history">Undone versions will appear here.</p>
+                </div>
+                <p class="stack-note">Redo restores a change you reversed.</p>
+            </article>
+        </section>
+
+        <section class="explanation-card">
+            <p class="eyebrow">THE DATA STRUCTURE BEHIND THE APP</p>
+            <h2>How stacks protect your work</h2>
+            <p>
+                A stack follows <strong>LIFO (Last In, First Out)</strong>.
+                When you edit your document, the application keeps previous
+                states in an undo stack. Undo removes the latest available
+                previous state and restores it. Redo uses a second stack
+                to restore changes you have undone.
+            </p>
+
+            <div class="concept-grid">
+                <div class="concept">
+                    <strong>Push</strong>
+                    <p>Add a document state to the top of a stack.</p>
+                </div>
+                <div class="concept">
+                    <strong>Pop</strong>
+                    <p>Remove the state at the top of a stack.</p>
+                </div>
+                <div class="concept">
+                    <strong>LIFO</strong>
+                    <p>The most recently stored state is handled first.</p>
                 </div>
             </div>
-        </aside>
+        </section>
+
+        <section class="applications-card">
+            <h2>Other real-world stack applications</h2>
+            <ul>
+                <li>Undo and redo in document editors and design software.</li>
+                <li>Browser navigation and previously visited pages.</li>
+                <li>Function calls and recursion in programming.</li>
+                <li>Expression evaluation and syntax checking.</li>
+                <li>Backtracking in puzzles, games, and maze solving.</li>
+            </ul>
+        </section>
+
+        <p class="privacy-note">
+            Your document is stored locally in this browser when you save it.
+            This is not cloud storage. Avoid relying on it as your only backup.
+        </p>
     </main>
 
-    <script src="app.js"></script>
+    <footer class="app-footer">
+        <p>Student Work Recovery System | Data Structures Assignment</p>
+    </footer>
 </body>
 </html>
